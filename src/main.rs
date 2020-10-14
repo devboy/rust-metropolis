@@ -29,8 +29,8 @@ mod metropolis;
 fn main() -> ! {
     let scale = Scale::MinorBlues;
     let mut seq = sequencer::Sequencer::<U8>::new();
-    seq.cfg().stage(0).unwrap().skipped = false;
-    seq.cfg().stage(1).unwrap().skipped = false;
+    seq.config().stage(0).unwrap().skipped = false;
+    seq.config().stage(1).unwrap().skipped = false;
 
     hprintln!("convert C: {:?}", scale.quantize(Note::C)).unwrap();
     hprintln!("convert D: {:?}", scale.quantize(Note::D)).unwrap();
