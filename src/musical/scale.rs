@@ -67,7 +67,7 @@ static AUGMENTED: [Note; 6] = [C, DSharp, E, G, GSharp, B];
 static ENIGMATIC: [Note; 7] = [C, CSharp, E, GSharp, GSharp, ASharp, B];
 
 impl Scale {
-    fn notes(self) -> &'static [Note] {
+    pub fn notes(self) -> &'static [Note] {
         match self {
             Scale::Chromatic => &CHROMATIC_NOTES,
             Scale::Major => &MAJOR,
@@ -102,6 +102,15 @@ impl Scale {
         }
     }
 
+    pub fn quantize_float(self, _input: f32) -> Note {
+        let notes = self.notes();
+        // TODO: Need a no_std round function
+        //let max_index = (notes.len() - 1).max(0) as f32;
+        // let index = round((clamp(input,0.0, 1.0) * max_index) as f64, 0);
+        let index = 0;
+        notes[index]
+    }
+
     pub fn quantize(self, input: Note) -> Note {
         let notes = self.notes();
         let mut min_distance = u8::MAX;
@@ -118,4 +127,16 @@ impl Scale {
         };
         return output;
     }
+}
+
+fn clamp(num: f32, min: f32, max: f32) -> f32 {
+    assert!(min <= max);
+    let mut x = num;
+    if x < min {
+        x = min;
+    }
+    if x > max {
+        x = max;
+    }
+    x
 }

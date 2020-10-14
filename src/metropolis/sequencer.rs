@@ -18,10 +18,16 @@ impl<N> Sequencer<N> where N: ArrayLength<Stage> {
         &mut self.config
     }
 
+    pub fn state(&self) -> State {
+        let current_stage = self.stage(self.position).expect("stage should exist");
+        //TODO: We need to implement a notion of time to trigger gates
+        State { gate: Gate::Open, note: current_stage.note }
+    }
+
     pub fn step(&mut self) {
         let current_stage = self.stage(self.position).expect("stage should exist");
         if self.position.pulse < current_stage.pulse_count - 1 {
-            self.position = Position{stage: self.position.stage, pulse: self.position.pulse + 1 }
+            self.position = Position { stage: self.position.stage, pulse: self.position.pulse + 1 }
         } else {
             self.position = self.next_stage_position(self.position)
         }
@@ -32,16 +38,15 @@ impl<N> Sequencer<N> where N: ArrayLength<Stage> {
         //TODO: Take skipped stages into account
         let stage_count = self.config.stage_count();
         if position.stage < stage_count - 1 {
-            Position{stage: position.stage + 1, pulse: 0 }
+            Position { stage: position.stage + 1, pulse: 0 }
         } else {
-            Position{stage: 0, pulse: 0 }
+            Position { stage: 0, pulse: 0 }
         }
     }
 
     fn stage(&self, pos: Position) -> Option<&Stage> {
         self.config.stages.get(pos.stage as usize)
     }
-
 }
 
 #[derive(Debug, Clone, Copy)]

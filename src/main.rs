@@ -11,38 +11,47 @@ extern crate stm32g0xx_hal as hal;
 
 use cortex_m_semihosting::hprintln;
 use heapless::consts::*;
-// use heapless::Vec;
-// use hal::analog::adc::{Precision, SampleTime, VTemp};
-// use hal::prelude::*;
-// use hal::stm32;
 use rt::entry;
 
 use crate::metropolis::sequencer;
-use crate::musical::note::Note;
 use crate::musical::scale::Scale;
 
 mod analog;
 mod musical;
 mod metropolis;
 
+
 #[entry]
 fn main() -> ! {
-    let scale = Scale::MinorBlues;
     let mut seq = sequencer::Sequencer::<U8>::new();
-    seq.config().stage(0).unwrap().skipped = false;
-    seq.config().stage(1).unwrap().skipped = false;
+    let scale = Scale::MinorBlues;
+    loop {
+        //Pretend our BPM is 1_000_000 loops
+        for _ in 0..1_000_000 {
+            //Read analog input
+            let slider_0 = 0.0;
+            let slider_1 = 0.1;
+            let slider_2 = 0.2;
+            let slider_3 = 0.4;
+            let slider_4 = 0.5;
+            let slider_5 = 0.7;
+            let slider_6 = 0.8;
+            let slider_7 = 1.0;
 
-    hprintln!("convert C: {:?}", scale.quantize(Note::C)).unwrap();
-    hprintln!("convert D: {:?}", scale.quantize(Note::D)).unwrap();
-    hprintln!("convert E: {:?}", scale.quantize(Note::E)).unwrap();
-    hprintln!("convert F: {:?}", scale.quantize(Note::F)).unwrap();
-    hprintln!("convert G: {:?}", scale.quantize(Note::G)).unwrap();
-    hprintln!("convert A: {:?}", scale.quantize(Note::A)).unwrap();
-    hprintln!("convert B: {:?}", scale.quantize(Note::B)).unwrap();
-    // let seq = Sequencer::new(8);
-    // for _ in 0..128 {
-    //     let state = seq.tick();
-    //     println!("state {}", state);
-    // }
-    loop {}
+            //Update sequencer values from analog inputs
+            seq.config().stage(0).unwrap().note = scale.quantize_float(slider_0);
+            seq.config().stage(1).unwrap().note = scale.quantize_float(slider_1);
+            seq.config().stage(2).unwrap().note = scale.quantize_float(slider_2);
+            seq.config().stage(3).unwrap().note = scale.quantize_float(slider_3);
+            seq.config().stage(4).unwrap().note = scale.quantize_float(slider_4);
+            seq.config().stage(5).unwrap().note = scale.quantize_float(slider_5);
+            seq.config().stage(6).unwrap().note = scale.quantize_float(slider_6);
+            seq.config().stage(7).unwrap().note = scale.quantize_float(slider_7);
+
+            //Get state of sequencer
+            let state = seq.state();
+            hprintln!("seq::state: {:?}", state).unwrap();
+        }
+        seq.step();
+    }
 }
