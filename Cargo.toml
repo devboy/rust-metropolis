@@ -1,0 +1,43 @@
+[package]
+name = "rust-metropolis"
+version = "0.1.0"
+authors = ["Dominic Graefen <dominic.graefen@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cortex-m = "0.6.3"
+cortex-m-rt = "0.6.10"
+cortex-m-rtic = "0.5.3"
+cortex-m-semihosting = "0.3.5"
+panic-halt = "0.2.0"
+panic-semihosting = "0.5.3"
+
+[dependencies.bare-metal]
+version = "1.0.0"
+
+[dependencies.embedded-hal]
+features = ["unproven"]
+version = "0.2.4"
+
+[dependencies.stm32g0]
+version = "0.12.1"
+features = ["stm32g071", "rt"]
+
+[dependencies.stm32g0xx-hal]
+version = "0.0.9"
+features = ["stm32g071", "rt"]
+
+[dev-dependencies]
+cortex-m = {version = "0.6.1", features = ["const-fn"] }
+cortex-m-rt = "0.6.10"
+cortex-m-rtic = "0.5.3"
+cortex-m-semihosting = "0.3.5"
+panic-halt = "0.2.0"
+panic-semihosting = "0.5.3"
+embedded-sdmmc = "0.2.1"
+st7735-lcd = "0.6.1"
+embedded-graphics = "0.5"
+smart-leds = {git = "https://github.com/smart-leds-rs/smart-leds"}
+ws2812-spi = {git = "https://github.com/smart-leds-rs/ws2812-spi-rs"}
