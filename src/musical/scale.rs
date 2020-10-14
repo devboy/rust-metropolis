@@ -1,58 +1,109 @@
 use crate::musical::note::Note;
 use crate::musical::note::Note::*;
 
-// Scales in Manual:
-// Chromatic CHrOM 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
-// Major MAJOr 0, 2, 4, 5, 7, 9, 11
-// Minor MInOr 0, 2, 3, 5, 7, 8, 10
-// Dorian dOrIA 0, 2, 3, 5, 7, 9, 10
-// Mixolydian MIXOL 0, 2, 4, 5, 7, 9, 10
-// Lydia LYdIA 0, 2, 4, 6, 7, 9, 11
-// Phrygian PHrYG 0, 1, 3, 5, 7, 8, 10
-// Locrian LOCrI 0, 1, 3, 4, 7, 8, 10
-// Diminished dIMIn 0, 1, 3, 4, 6, 7, 9, 10
-// Whole-Half -HALF 0, 2, 3, 5, 6, 8, 9, 11
-// Whole Tone -HOLE 0, 2, 4, 6, 8, 10
-// Minor Blues bLUES 0, 3, 5, 6, 7, 10
-// Minor Pentatonic PEnT- 0, 3, 5, 7, 10
-// Major Pentatonic PEnTA 0, 2, 4, 7, 9
-// Harmonic Minor HArMI 0, 2, 3, 5, 7, 8, 11
-// Melodic Minor MELMI 0, 2, 3, 5, 7, 9, 11
-// Super Locrian SULOC 0, 1, 3, 4, 6, 8, 10
-// Arabic / Bhairav ArAbI 0, 1, 4, 5, 7, 8, 11
-// Hungarian Minor HUnGA 0, 2, 3, 6, 7, 8, 11
-// Minor Gypsy GYPSY 0, 1, 4, 5, 7, 8, 10
-// Hirojoshi HIrOJ 0, 2, 3, 7, 8
-// In-Sen InSEn 0, 1, 5, 7, 10
-// Japanese / Iwato JAPAn 0, 1, 5, 6, 10
-// Kumoi KUMOI 0, 2, 3, 7, 9
-// Pelog PELOG 0, 1, 3, 4, 7, 8
-// Spanish SPAIn 0, 1, 3, 4, 5, 6, 8, 10
-// Tritone 3TOnE 0, 1, 4, 6, 7, 10
-// Prometheus PrOME 0, 2, 4, 6, 9, 10
-// Augmented AUGME 0, 3, 4, 7, 8, 11
-// Enigmatic EnIGM 0, 1, 4, 6, 8, 10, 11
+#[derive(Debug, Clone, Copy)]
 pub enum Scale {
-    Chromatic,
-    Bassline,
-    Octave,
-    PentatonicMajor,
-    PentatonicMinor,
+    Chromatic = 0,
+    Major = 1,
+    Minor = 2,
+    Dorian = 3,
+    Mixolydian = 4,
+    Lydia = 5,
+    Phrygian = 6,
+    Locrian = 7,
+    Diminished = 8,
+    WholeHalf = 9,
+    WholeTone = 10,
+    MinorBlues = 11,
+    MinorPentatonic = 12,
+    MajorPentatonic = 13,
+    HarmonicMinor = 14,
+    MelodicMinor = 15,
+    SuperLocrian = 16,
+    Arabic = 17,
+    HungarianMinor = 18,
+    MinorGypsy = 19,
+    Hirojoshi = 20,
+    InSen = 21,
+    Japanese = 22,
+    Kumoi = 23,
+    Pelog = 24,
+    Spanish = 25,
+    Tritone = 26,
+    Prometheus = 27,
+    Augmented = 28,
+    Enigmatic = 29,
 }
 
+static CHROMATIC_NOTES: [Note; 12] = [C, CSharp, D, DSharp, E, F, FSharp, G, GSharp, A, ASharp, B];
+static MAJOR: [Note; 7] = [C, D, E, F, G, A, B];
+static MINOR: [Note; 7] = [C, D, DSharp, F, G, GSharp, ASharp];
+static DORIAN: [Note; 7] = [C, D, DSharp, F, G, A, ASharp];
+static MIXOLYDIAN: [Note; 7] = [C, D, E, F, G, A, ASharp];
+static LYDIA: [Note; 7] = [C, D, E, GSharp, G, A, B];
+static PHRYGIAN: [Note; 7] = [C, CSharp, DSharp, F, G, GSharp, ASharp];
+static LOCRIAN: [Note; 7] = [C, CSharp, DSharp, E, G, GSharp, ASharp];
+static DIMINISHED: [Note; 8] = [C, CSharp, DSharp, E, GSharp, G, A, ASharp];
+static WHOLE_HALF: [Note; 8] = [C, D, DSharp, F, GSharp, GSharp, A, B];
+static WHOLE_TONE: [Note; 6] = [C, D, E, GSharp, GSharp, ASharp];
+static MINOR_BLUES: [Note; 6] = [C, DSharp, F, GSharp, G, ASharp];
+static MINOR_PENTATONIC: [Note; 5] = [C, DSharp, F, G, ASharp];
+static MAJOR_PENTATONIC: [Note; 5] = [C, D, E, G, A];
+static HARMONIC_MINOR: [Note; 7] = [C, D, DSharp, F, G, GSharp, B];
+static MELODIC_MINOR: [Note; 7] = [C, D, DSharp, F, G, A, B];
+static SUPER_LOCRIAN: [Note; 7] = [C, CSharp, DSharp, E, GSharp, GSharp, ASharp];
+static ARABIC: [Note; 7] = [C, CSharp, E, F, G, GSharp, B];
+static HUNGARIAN_MINOR: [Note; 7] = [C, D, DSharp, GSharp, G, GSharp, B];
+static MINOR_GYPSY: [Note; 7] = [C, CSharp, E, F, G, GSharp, ASharp];
+static HIROJOSHI: [Note; 5] = [C, D, DSharp, G, GSharp];
+static IN_SEN: [Note; 5] = [C, CSharp, F, G, ASharp];
+static JAPANESE: [Note; 5] = [C, CSharp, F, GSharp, ASharp];
+static KUMOI: [Note; 5] = [C, D, DSharp, G, A];
+static PELOG: [Note; 6] = [C, CSharp, DSharp, E, G, GSharp];
+static SPANISH: [Note; 8] = [C, CSharp, DSharp, E, F, GSharp, GSharp, ASharp];
+static TRITONE: [Note; 6] = [C, CSharp, E, GSharp, G, ASharp];
+static PROMETHEUS: [Note; 6] = [C, D, E, GSharp, A, ASharp];
+static AUGMENTED: [Note; 6] = [C, DSharp, E, G, GSharp, B];
+static ENIGMATIC: [Note; 7] = [C, CSharp, E, GSharp, GSharp, ASharp, B];
+
 impl Scale {
-    fn notes(&self) -> &'static [Note] {
+    fn notes(self) -> &'static [Note] {
         match self {
-            Scale::Chromatic => &[C, CSharp, D, DSharp, E, F, FSharp, G, GSharp, A, ASharp, B],
-            Scale::Bassline => &[C, G, ASharp],
-            Scale::Octave => &[C],
-            Scale::PentatonicMajor => &[C, D, E, G, A],
-            Scale::PentatonicMinor => &[C, DSharp, F, G, ASharp],
+            Scale::Chromatic => &CHROMATIC_NOTES,
+            Scale::Major => &MAJOR,
+            Scale::Minor => &MINOR,
+            Scale::Dorian => &DORIAN,
+            Scale::Mixolydian => &MIXOLYDIAN,
+            Scale::Lydia => &LYDIA,
+            Scale::Phrygian => &PHRYGIAN,
+            Scale::Locrian => &LOCRIAN,
+            Scale::Diminished => &DIMINISHED,
+            Scale::WholeHalf => &WHOLE_HALF,
+            Scale::WholeTone => &WHOLE_TONE,
+            Scale::MinorBlues => &MINOR_BLUES,
+            Scale::MinorPentatonic => &MINOR_PENTATONIC,
+            Scale::MajorPentatonic => &MAJOR_PENTATONIC,
+            Scale::HarmonicMinor => &HARMONIC_MINOR,
+            Scale::MelodicMinor => &MELODIC_MINOR,
+            Scale::SuperLocrian => &SUPER_LOCRIAN,
+            Scale::Arabic => &ARABIC,
+            Scale::HungarianMinor => &HUNGARIAN_MINOR,
+            Scale::MinorGypsy => &MINOR_GYPSY,
+            Scale::Hirojoshi => &HIROJOSHI,
+            Scale::InSen => &IN_SEN,
+            Scale::Japanese => &JAPANESE,
+            Scale::Kumoi => &KUMOI,
+            Scale::Pelog => &PELOG,
+            Scale::Spanish => &SPANISH,
+            Scale::Tritone => &TRITONE,
+            Scale::Prometheus => &PROMETHEUS,
+            Scale::Augmented => &AUGMENTED,
+            Scale::Enigmatic => &ENIGMATIC,
         }
     }
 
-    pub fn quantize(&self, input: Note) -> Note {
-        let notes: &'static [Note] = self.notes();
+    pub fn quantize(self, input: Note) -> Note {
+        let notes = self.notes();
         let mut min_distance = u8::MAX;
         let mut output = input;
         for note in notes {

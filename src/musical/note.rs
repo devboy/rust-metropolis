@@ -1,40 +1,23 @@
 #[derive(Debug, Clone, Copy)]
 pub enum Note {
-    C,
-    CSharp,
-    D,
-    DSharp,
-    E,
-    F,
-    FSharp,
-    G,
-    GSharp,
-    A,
-    ASharp,
-    B,
+    C = 0,
+    CSharp = 1,
+    D = 2,
+    DSharp = 3,
+    E = 4,
+    F = 5,
+    FSharp = 6,
+    G = 7,
+    GSharp = 8,
+    A = 9,
+    ASharp = 10,
+    B = 11,
 }
 
 impl Note {
     pub const COUNT: u8 = 12;
 
-    pub fn index(&self) -> u8 {
-        match self {
-            Note::C => 1,
-            Note::CSharp => 2,
-            Note::D => 3,
-            Note::DSharp => 4,
-            Note::E => 5,
-            Note::F => 6,
-            Note::FSharp => 7,
-            Note::G => 8,
-            Note::GSharp => 9,
-            Note::A => 10,
-            Note::ASharp => 11,
-            Note::B => 12
-        }
-    }
-
-    pub fn distance(&self, b: Note) -> u8 {
-        (self.index() as i8 - b.index() as i8).abs() as u8
+    pub fn distance(self, b: Note) -> u8 {
+        (self as i8 - b as i8).abs() as u8
     }
 }

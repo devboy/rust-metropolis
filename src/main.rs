@@ -5,28 +5,33 @@
 
 extern crate cortex_m;
 extern crate cortex_m_rt as rt;
+extern crate heapless;
 extern crate panic_halt;
 extern crate stm32g0xx_hal as hal;
 
 use cortex_m_semihosting::hprintln;
+use heapless::consts::*;
+// use heapless::Vec;
 // use hal::analog::adc::{Precision, SampleTime, VTemp};
 // use hal::prelude::*;
 // use hal::stm32;
 use rt::entry;
 
+use crate::metropolis::sequencer;
+use crate::musical::note::Note;
+use crate::musical::scale::Scale;
+
 mod analog;
 mod musical;
 mod metropolis;
 
-// use crate::analog::note as _;
-use crate::musical::note::{Note};
-use crate::musical::scale::Scale;
-use crate::metropolis::sequencer;
-
 #[entry]
 fn main() -> ! {
-    let scale = Scale::Bassline;
-    let _sequencer = sequencer::Sequencer::new(sequencer::Config::new());
+    let scale = Scale::MinorBlues;
+    let mut seq = sequencer::Sequencer::<U8>::new();
+    seq.cfg().stage(0).unwrap().skipped = false;
+    seq.cfg().stage(1).unwrap().skipped = false;
+
     hprintln!("convert C: {:?}", scale.quantize(Note::C)).unwrap();
     hprintln!("convert D: {:?}", scale.quantize(Note::D)).unwrap();
     hprintln!("convert E: {:?}", scale.quantize(Note::E)).unwrap();

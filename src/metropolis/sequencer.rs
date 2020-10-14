@@ -1,20 +1,27 @@
+use heapless::{ArrayLength, Vec};
+
 use crate::musical::gate::Gate;
 use crate::musical::note::Note;
 
-pub struct Sequencer {
+#[derive(Debug, Clone)]
+pub struct Sequencer<N> where N: ArrayLength<Stage> {
+    config: Config<N>,
     pulse_position: u8,
-    config: Config,
 }
 
-impl Sequencer {
-    pub fn new(cfg: Config) -> Sequencer {
-        Self { pulse_position: 0, config: cfg }
+impl<N> Sequencer<N> where N: ArrayLength<Stage> {
+    pub fn new() -> Sequencer<N> {
+        Self { pulse_position: 0, config: Config::new() }
     }
 
-    pub fn update(&mut self, cfg: Config) -> State {
+    pub fn update(&mut self, cfg: Config<N>) -> State {
         self.config = cfg;
         let stage = self.current_stage();
         State { note: stage.note, gate: Gate::Open }
+    }
+
+    pub fn cfg(&mut self) -> &mut Config<N> {
+        &mut self.config
     }
 
     pub fn step(&mut self) {
@@ -42,19 +49,27 @@ impl Sequencer {
     }
 }
 
-pub struct Config {
-    stages: [Stage; 64],
+#[derive(Debug, Clone)]
+pub struct Config<N> where N: ArrayLength<Stage> {
+    stages: Vec<Stage, N>,
 }
 
-impl Config {
+impl<N> Config<N> where N: ArrayLength<Stage>
+{
     pub fn new() -> Self {
-        Self { stages: [Stage::default(); 64] }
+        Self { stages: Vec::<Stage, N>::new() }
+    }
+
+    pub fn stage(&mut self, index: usize) -> Option<&mut Stage> {
+        self.stages.get_mut(index)
     }
 
     pub fn pulse_count(&self) -> u8 {
         let mut counts = 0_u8;
         for stage in self.stages.iter() {
-            counts += stage.pulse_count
+            if !stage.skipped {
+                counts += stage.pulse_count
+            };
         }
         return counts;
     }

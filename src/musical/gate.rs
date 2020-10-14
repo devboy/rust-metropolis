@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, Copy)]
 pub enum Gate {
-    Open,
-    Closed,
+    Closed = 0,
+    Open = 1,
 }
