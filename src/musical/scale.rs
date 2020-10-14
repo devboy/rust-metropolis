@@ -1,5 +1,6 @@
 use crate::musical::note::Note;
 use crate::musical::note::Note::*;
+use micromath::F32Ext;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Scale {
@@ -102,12 +103,10 @@ impl Scale {
         }
     }
 
-    pub fn quantize_float(self, _input: f32) -> Note {
+    pub fn quantize_float(self, input: f32) -> Note {
         let notes = self.notes();
-        // TODO: Need a no_std round function
-        //let max_index = (notes.len() - 1).max(0) as f32;
-        // let index = round((clamp(input,0.0, 1.0) * max_index) as f64, 0);
-        let index = 0;
+        let max_index = (notes.len() - 1).max(0);
+        let index= F32Ext::round(clamp(input,0.0, 1.0) * max_index as f32) as usize;
         notes[index]
     }
 
