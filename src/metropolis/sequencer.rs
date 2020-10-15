@@ -69,7 +69,11 @@ impl StageMode {
         if stage_mask.count() == 0 {
             Position{ stage: position.stage, pulse: 0, direction: position.direction }
         } else {
-            let rnd = stage_mask.next_lower(F32Ext::round(Self::rnd() * 7 as f32) as u8).expect("should exist");
+            let idx = F32Ext::round(Self::rnd() * 7 as f32) as u8;
+            // Biased towards lower numbers...
+            let rnd = stage_mask.next_lower(idx)
+                .or(stage_mask.next_higher(idx))
+                .unwrap_or(idx);
             Position{ stage: rnd, pulse: 0, direction: position.direction }
         }
     }
