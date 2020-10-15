@@ -194,11 +194,15 @@ impl MaskU8 {
     }
 
     fn highest(&self) -> Option<u8> {
-        self.next_lower(7)
+        self.next_lower(8)
     }
 
     fn lowest(&self) -> Option<u8> {
-        self.next_higher(0)
+        if self.0 & 1 > 0 {
+            Some(0)
+        } else {
+            self.next_higher(0)
+        }
     }
 
     fn is_set(&self, pos: u8) -> bool {
