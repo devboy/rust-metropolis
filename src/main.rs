@@ -10,7 +10,6 @@ extern crate panic_halt;
 extern crate stm32g0xx_hal as hal;
 
 use cortex_m_semihosting::hprintln;
-use heapless::consts::*;
 use rt::entry;
 
 use crate::metropolis::sequencer;
@@ -23,7 +22,7 @@ mod metropolis;
 
 #[entry]
 fn main() -> ! {
-    let mut seq = sequencer::Sequencer::<U8>::new();
+    let mut seq = sequencer::Sequencer::new();
     let scale = Scale::MinorBlues;
     loop {
         //Pretend our BPM is 1_000_000 loops
