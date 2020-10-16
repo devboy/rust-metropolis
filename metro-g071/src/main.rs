@@ -31,6 +31,7 @@ use hal::delay::DelayExt;
 const N: usize = 8;
 const BPM: u32 = 128;
 const BD: MicroSecond = MicroSecond(((60_f32 / BPM as f32) * 1000_f32) as u32);
+const GD: u32 = BD.0 / 2;
 
 #[entry]
 fn main() -> ! {
@@ -70,6 +71,7 @@ fn main() -> ! {
     let stopwatch = dp.TIM3.stopwatch(&mut rcc);
 
     let mut seq = sequencer::Sequencer::new();
+    seq.set_gate_time_ms(GD);
     let scale = Scale::MinorBlues;
     let mut last_beat = stopwatch.now();
 

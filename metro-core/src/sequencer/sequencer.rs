@@ -3,7 +3,6 @@ use crate::musical::note::Note;
 use crate::sequencer::stage_mode::StageMode;
 
 const N: usize = 8;
-const GATE_MS: u32 = 200;
 
 #[derive(Debug, Clone)]
 pub struct Sequencer {
@@ -22,7 +21,7 @@ impl Sequencer {
 
     pub fn state(&self, last_beat_ms: u32) -> State {
         let current_stage = self.stage(self.pos).expect("stage should exist");
-        let gate = current_stage.gate_mode.gate(GATE_MS, last_beat_ms, self.pos.pulse == 0, self.pos.pulse > current_stage.pulse_count - 1);
+        let gate = current_stage.gate_mode.gate(self.config.gate_time_ms, last_beat_ms, self.pos.pulse == 0, self.pos.pulse > current_stage.pulse_count - 1);
         State { gate, note: current_stage.note, pos: self.pos }
     }
 
@@ -72,12 +71,13 @@ impl Direction {
 pub struct Config {
     stages: [Stage; N],
     stage_mode: StageMode,
+    gate_time_ms: u32,
 }
 
 impl Config
 {
     pub fn new() -> Self {
-        Self { stages: [Stage::default(); N], stage_mode: StageMode::Forward }
+        Self { stages: [Stage::default(); N], stage_mode: StageMode::Forward, gate_time_ms: 50 }
     }
 
     pub fn stage(&mut self, index: usize) -> Option<&mut Stage> {
@@ -96,6 +96,10 @@ impl Config
             }
         };
         MaskU8(mask)
+    }
+
+    pub fn set_gate_time_ms(&mut self, gate_time_ms: u32) {
+        self.gate_time_ms = gate_time_ms
     }
 }
 
