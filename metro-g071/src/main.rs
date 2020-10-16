@@ -30,8 +30,9 @@ use hal::delay::DelayExt;
 
 const N: usize = 8;
 const BPM: u32 = 128;
-const BD: MicroSecond = MicroSecond(((60_f32 / BPM as f32) * 1000_f32) as u32);
-const GD: u32 = BD.0 / 2;
+const STEP_PM: u32 = BPM * 4;
+const STEP_DUR: MicroSecond = MicroSecond(((60_f32 / STEP_PM as f32) * 1000_f32) as u32);
+const GATE_DUR: u32 = STEP_DUR.0 / 2;
 
 #[entry]
 fn main() -> ! {
@@ -71,7 +72,7 @@ fn main() -> ! {
     let stopwatch = dp.TIM3.stopwatch(&mut rcc);
 
     let mut seq = sequencer::Sequencer::new();
-    seq.set_gate_time_ms(GD);
+    seq.config().set_gate_time_ms(GATE_DUR);
     let scale = Scale::MinorBlues;
     let mut last_beat = stopwatch.now();
 
@@ -100,7 +101,7 @@ fn main() -> ! {
         }
 
         //Trigger BPM
-        if stopwatch.elapsed(last_beat) > BD {
+        if stopwatch.elapsed(last_beat) > STEP_DUR {
             seq.step();
             last_beat = stopwatch.now();
         }
