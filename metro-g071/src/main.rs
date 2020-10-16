@@ -8,17 +8,13 @@ extern crate cortex_m_rt as rt;
 extern crate heapless;
 extern crate panic_halt;
 extern crate stm32g0xx_hal as hal;
+extern crate metro_core;
 
 use cortex_m_semihosting::hprintln;
 use rt::entry;
 
-use crate::metropolis::sequencer;
-use crate::musical::scale::Scale;
-
-mod analog;
-mod musical;
-mod metropolis;
-
+use metro_core::sequencer::sequencer;
+use metro_core::musical::scale::Scale;
 
 #[entry]
 fn main() -> ! {
