@@ -3,6 +3,7 @@ use crate::musical::note::Note;
 use crate::sequencer::stage_mode::StageMode;
 
 const N: usize = 8;
+const GATE_MS: u32 = 200;
 
 #[derive(Debug, Clone)]
 pub struct Sequencer {
@@ -19,10 +20,10 @@ impl Sequencer {
         &mut self.config
     }
 
-    pub fn state(&self) -> State {
+    pub fn state(&self, last_beat_ms: u32) -> State {
         let current_stage = self.stage(self.pos).expect("stage should exist");
-        //TODO: We need to implement a notion of time to trigger gates
-        State { gate: Gate::Open, note: current_stage.note, pos: self.pos }
+        let gate = current_stage.gate_mode.gate(GATE_MS, last_beat_ms, self.pos.pulse == 0, self.pos.pulse > current_stage.pulse_count - 1);
+        State { gate, note: current_stage.note, pos: self.pos }
     }
 
     pub fn step(&mut self) {
@@ -152,9 +153,9 @@ impl MaskU8 {
 
 #[derive(Debug, Clone, Copy)]
 pub struct State {
-    note: Note,
-    gate: Gate,
-    pos: Position,
+    pub note: Note,
+    pub gate: Gate,
+    pub pos: Position,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -163,6 +164,17 @@ pub enum GateMode {
     Sustain,
     Single,
     Silent,
+}
+
+impl GateMode {
+    pub fn gate(self, gate_time_ms: u32, last_beat_ms: u32, first_pulse: bool, last_pulse: bool) -> Gate {
+        match self {
+            GateMode::Repeat if gate_time_ms >= last_beat_ms => Gate::Open,
+            GateMode::Single if gate_time_ms >= last_beat_ms && first_pulse => Gate::Open,
+            GateMode::Sustain if !last_pulse || gate_time_ms >= last_beat_ms => Gate::Open,
+            _ => Gate::Closed,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -6,47 +6,116 @@
 extern crate cortex_m;
 extern crate cortex_m_rt as rt;
 extern crate heapless;
+extern crate metro_core;
 extern crate panic_halt;
 extern crate stm32g0xx_hal as hal;
-extern crate metro_core;
 
-use cortex_m_semihosting::hprintln;
-use rt::entry;
-
-use metro_core::sequencer::sequencer;
+use analog_multiplexer::Multiplexer;
+use hal::analog::adc::{AdcExt, Precision, SampleTime};
+use hal::gpio::GpioExt;
+use hal::hal::adc::OneShot;
+use hal::rcc::RccExt;
+use hal::stm32;
+use hal::time::MicroSecond;
+use hal::timer::stopwatch::StopwatchExt;
 use metro_core::musical::scale::Scale;
+use metro_core::sequencer::sequencer;
+use rt::entry;
+use metro_core::sequencer::sequencer::GateMode;
+use micromath::F32Ext;
+use hal::analog::dac::{DacExt, DacOut};
+use metro_core::musical::gate::Gate;
+use hal::prelude::OutputPin;
+use hal::delay::DelayExt;
+
+const N: usize = 8;
+const BPM: u32 = 128;
+const BD: MicroSecond = MicroSecond(((60_f32 / BPM as f32) * 1000_f32) as u32);
 
 #[entry]
 fn main() -> ! {
+    let cp = cortex_m::Peripherals::take().expect("cannot take core peripherals");
+    let dp = stm32::Peripherals::take().expect("cannot take peripherals");
+    let mut rcc = dp.RCC.constrain();
+    let mut adc = dp.ADC.constrain(&mut rcc);
+    adc.set_sample_time(SampleTime::T_80);
+    adc.set_precision(Precision::B_12);
+    let mut delay = cp.SYST.delay(&mut rcc);
+    let gpioa = dp.GPIOA.split(&mut rcc);
+    let gpiob = dp.GPIOB.split(&mut rcc);
+
+    // Multiplexer Inputs
+    let mux_in_0 = gpiob.pb12.into_push_pull_output();
+    let mux_in_1 = gpiob.pb13.into_push_pull_output();
+    let mux_in_2 = gpiob.pb14.into_push_pull_output();
+    let mux_in_en = gpiob.pb15.into_push_pull_output();
+    let mut mux_in = Multiplexer::new((mux_in_0, mux_in_1, mux_in_2, mux_in_en));
+    let mut a_pitch = gpioa.pa0.into_analog();
+    let mut a_pulse_count = gpioa.pa1.into_analog();
+    let mut a_gate_mode = gpioa.pa2.into_analog();
+
+    // Multiplexer Outputs
+    let mux_out_0 = gpiob.pb0.into_push_pull_output();
+    let mux_out_1 = gpiob.pb1.into_push_pull_output();
+    let mux_out_2 = gpiob.pb2.into_push_pull_output();
+    let mux_out_en = gpiob.pb3.into_push_pull_output();
+    let mut mux_out = Multiplexer::new((mux_out_0, mux_out_1, mux_out_2, mux_out_en));
+    let mut gate_led = gpiob.pb4.into_push_pull_output();
+
+    // Outputs
+    let mut gate = gpiob.pb5.into_push_pull_output();
+    let dac0 = dp.DAC.constrain(gpioa.pa4, &mut rcc);
+    let mut pitch = dac0.calibrate_buffer(&mut delay).enable();
+
+    let stopwatch = dp.TIM3.stopwatch(&mut rcc);
+
     let mut seq = sequencer::Sequencer::new();
     let scale = Scale::MinorBlues;
+    let mut last_beat = stopwatch.now();
+
+    let mut pitches = [0_f32; N];
+    let mut pulse_counts = [0_f32; N];
+    let mut gate_modes = [0_f32; N];
+
     loop {
-        //Pretend our BPM is 1_000_000 loops
-        for _ in 0..1_000_000 {
-            //Read analog input
-            let slider_0 = 0.0;
-            let slider_1 = 0.1;
-            let slider_2 = 0.2;
-            let slider_3 = 0.4;
-            let slider_4 = 0.5;
-            let slider_5 = 0.7;
-            let slider_6 = 0.8;
-            let slider_7 = 1.0;
-
-            //Update sequencer values from analog inputs
-            seq.config().stage(0).unwrap().note = scale.quantize_float(slider_0);
-            seq.config().stage(1).unwrap().note = scale.quantize_float(slider_1);
-            seq.config().stage(2).unwrap().note = scale.quantize_float(slider_2);
-            seq.config().stage(3).unwrap().note = scale.quantize_float(slider_3);
-            seq.config().stage(4).unwrap().note = scale.quantize_float(slider_4);
-            seq.config().stage(5).unwrap().note = scale.quantize_float(slider_5);
-            seq.config().stage(6).unwrap().note = scale.quantize_float(slider_6);
-            seq.config().stage(7).unwrap().note = scale.quantize_float(slider_7);
-
-            //Get state of sequencer
-            let state = seq.state();
-            hprintln!("seq::state: {:?}", state).unwrap();
+        // Read analog values from mux
+        for ch in 0..mux_in.num_channels {
+            mux_in.set_channel(ch);
+            let pitch: u32 = adc.read(&mut a_pitch).unwrap();
+            pitches[ch as usize] = pitch.saturating_sub(32) as f32 / 4_096_f32;
+            let pulse_count: u32 = adc.read(&mut a_pulse_count).unwrap();
+            pulse_counts[ch as usize] = pulse_count.saturating_sub(32) as f32 / 4_096_f32;
+            let gate_mode: u32 = adc.read(&mut a_gate_mode).unwrap();
+            gate_modes[ch as usize] = gate_mode.saturating_sub(32) as f32 / 4_096_f32;
         }
-        seq.step();
+
+        // Configure sequencer
+        for s in 0..N {
+            let stage = seq.config().stage(s).unwrap();
+            stage.note = scale.quantize_float(pitches[s]);
+            stage.gate_mode = GateMode::from_float(gate_modes[s]);
+            stage.pulse_count = F32Ext::round(pulse_counts[s] * N as f32) as u8;
+        }
+
+        //Trigger BPM
+        if stopwatch.elapsed(last_beat) > BD {
+            seq.step();
+            last_beat = stopwatch.now();
+        }
+
+        //Get state of sequencer
+        let state = seq.state(stopwatch.elapsed(last_beat).0);
+        pitch.set_value((state.note.voltage() * (4_095_f32 / 3.3)) as u16);
+        match state.gate {
+            Gate::Open => {
+                gate.set_high().unwrap();
+                gate_led.set_high().unwrap();
+            },
+            Gate::Closed => {
+                gate.set_low().unwrap();
+                gate_led.set_low().unwrap();
+            },
+        }
+        mux_out.set_channel(state.pos.stage);
     }
 }
