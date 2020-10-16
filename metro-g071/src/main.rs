@@ -79,14 +79,14 @@ fn main() -> ! {
 
     loop {
         // Read analog values from mux
-        for ch in 0..mux_in.num_channels {
-            mux_in.set_channel(ch);
+        for ch in 0..N {
+            mux_in.set_channel(ch as u8);
             let pitch: u32 = adc.read(&mut a_pitch).unwrap();
-            pitches[ch as usize] = pitch.saturating_sub(32) as f32 / 4_096_f32;
+            pitches[ch] = pitch.saturating_sub(32) as f32 / 4_096_f32;
             let pulse_count: u32 = adc.read(&mut a_pulse_count).unwrap();
-            pulse_counts[ch as usize] = pulse_count.saturating_sub(32) as f32 / 4_096_f32;
+            pulse_counts[ch] = pulse_count.saturating_sub(32) as f32 / 4_096_f32;
             let gate_mode: u32 = adc.read(&mut a_gate_mode).unwrap();
-            gate_modes[ch as usize] = gate_mode.saturating_sub(32) as f32 / 4_096_f32;
+            gate_modes[ch] = gate_mode.saturating_sub(32) as f32 / 4_096_f32;
         }
 
         // Configure sequencer
