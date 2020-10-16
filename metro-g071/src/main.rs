@@ -74,7 +74,7 @@ fn main() -> ! {
     let mut seq = sequencer::Sequencer::new();
     seq.config().set_gate_time_ms(GATE_DUR);
     let scale = Scale::MinorBlues;
-    let mut last_beat = stopwatch.now();
+    let mut last_step = stopwatch.now();
 
     let mut pitches = [0_f32; N];
     let mut pulse_counts = [0_f32; N];
@@ -100,14 +100,14 @@ fn main() -> ! {
             stage.pulse_count = F32Ext::round(pulse_counts[s] * N as f32) as u8;
         }
 
-        //Trigger BPM
-        if stopwatch.elapsed(last_beat) > STEP_DUR {
+        //Trigger Step
+        if stopwatch.elapsed(last_step) > STEP_DUR {
             seq.step();
-            last_beat = stopwatch.now();
+            last_step = stopwatch.now();
         }
 
         //Get state of sequencer
-        let state = seq.state(stopwatch.elapsed(last_beat).0);
+        let state = seq.state(stopwatch.elapsed(last_step).0);
         pitch.set_value((state.note.voltage() * (4_095_f32 / 3.3)) as u16);
         match state.gate {
             Gate::Open => {
