@@ -1,2 +1,2 @@
 pub mod sequencer;
-mod stage_mode;
+pub mod stage_mode;

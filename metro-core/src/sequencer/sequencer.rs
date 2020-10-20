@@ -19,9 +19,9 @@ impl Sequencer {
         &mut self.config
     }
 
-    pub fn state(&self, last_beat_ms: u32) -> State {
+    pub fn state(&self, last_beat_us: u32) -> State {
         let current_stage = self.stage(self.pos).expect("stage should exist");
-        let gate = current_stage.gate_mode.gate(self.config.gate_time_ms, last_beat_ms, self.pos.pulse == 0, self.pos.pulse > current_stage.pulse_count - 1);
+        let gate = current_stage.gate_mode.gate(self.config.gate_time_us, last_beat_us, self.pos.pulse == 0, self.pos.pulse > current_stage.pulse_count - 1);
         State { gate, note: current_stage.note, pos: self.pos }
     }
 
@@ -71,13 +71,13 @@ impl Direction {
 pub struct Config {
     stages: [Stage; N],
     stage_mode: StageMode,
-    gate_time_ms: u32,
+    gate_time_us: u32,
 }
 
 impl Config
 {
     pub fn new() -> Self {
-        Self { stages: [Stage::default(); N], stage_mode: StageMode::Forward, gate_time_ms: 50 }
+        Self { stages: [Stage::default(); N], stage_mode: StageMode::Forward, gate_time_us: 50 }
     }
 
     pub fn stage(&mut self, index: usize) -> Option<&mut Stage> {
@@ -98,8 +98,12 @@ impl Config
         MaskU8(mask)
     }
 
-    pub fn set_gate_time_ms(&mut self, gate_time_ms: u32) {
-        self.gate_time_ms = gate_time_ms
+    pub fn set_gate_time_us(&mut self, gate_time_us: u32) {
+        self.gate_time_us = gate_time_us
+    }
+
+    pub fn set_stage_mode(&mut self, stage_mode: StageMode) {
+        self.stage_mode = stage_mode
     }
 }
 
@@ -171,11 +175,11 @@ pub enum GateMode {
 }
 
 impl GateMode {
-    pub fn gate(self, gate_time_ms: u32, last_beat_ms: u32, first_pulse: bool, last_pulse: bool) -> Gate {
+    pub fn gate(self, gate_time_us: u32, last_beat_us: u32, first_pulse: bool, last_pulse: bool) -> Gate {
         match self {
-            GateMode::Repeat if gate_time_ms >= last_beat_ms => Gate::Open,
-            GateMode::Single if gate_time_ms >= last_beat_ms && first_pulse => Gate::Open,
-            GateMode::Sustain if !last_pulse || gate_time_ms >= last_beat_ms => Gate::Open,
+            GateMode::Repeat if gate_time_us >= last_beat_us => Gate::Open,
+            GateMode::Single if gate_time_us >= last_beat_us && first_pulse => Gate::Open,
+            GateMode::Sustain if !last_pulse || gate_time_us >= last_beat_us => Gate::Open,
             _ => Gate::Closed,
         }
     }
@@ -196,5 +200,19 @@ impl Stage {
 
     pub fn has_pulses(&self) -> bool {
         self.pulse_count > 0 && !self.skipped
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::sequencer::sequencer::GateMode::Repeat;
+    use crate::musical::gate::Gate;
+
+    #[test]
+    fn test_gate_mode() {
+        // Repeat
+        assert_eq!(Gate::Closed, Repeat.gate(2, 3, false, false));
+        assert_eq!(Gate::Open, Repeat.gate(2, 1, false, false));
+        assert_eq!(Gate::Open, Repeat.gate(2, 2, false, false));
     }
 }

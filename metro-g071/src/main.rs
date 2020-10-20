@@ -1,5 +1,5 @@
 #![deny(warnings)]
-#![deny(unsafe_code)]
+// #![deny(unsafe_code)]
 #![no_main]
 #![no_std]
 
@@ -7,38 +7,52 @@ extern crate cortex_m;
 extern crate cortex_m_rt as rt;
 extern crate heapless;
 extern crate metro_core;
-extern crate panic_halt;
+// extern crate nb;
+// extern crate panic_halt;
+use panic_semihosting as _;
 extern crate stm32g0xx_hal as hal;
 
 use analog_multiplexer::Multiplexer;
+use cortex_m_semihosting::hprintln;
+// use embedded_hal::digital::v2::StatefulOutputPin;
 use hal::analog::adc::{AdcExt, Precision, SampleTime};
-use hal::gpio::GpioExt;
+use hal::analog::dac::{DacExt, DacOut};
+use hal::delay::DelayExt;
+use hal::gpio::{GpioExt, Speed};
 use hal::hal::adc::OneShot;
-use hal::rcc::RccExt;
+use hal::hal::timer::CountDown;
+use hal::prelude::OutputPin;
+use hal::rcc::{Config, RccExt};
 use hal::stm32;
-use hal::time::MicroSecond;
-use hal::timer::stopwatch::StopwatchExt;
+use hal::time::{U32Ext};
+use hal::timer::TimerExt;
+use micromath::F32Ext;
+use rt::entry;
+
+use metro_core::musical::gate::Gate;
 use metro_core::musical::scale::Scale;
 use metro_core::sequencer::sequencer;
-use rt::entry;
 use metro_core::sequencer::sequencer::GateMode;
-use micromath::F32Ext;
-use hal::analog::dac::{DacExt, DacOut};
-use metro_core::musical::gate::Gate;
-use hal::prelude::OutputPin;
-use hal::delay::DelayExt;
+use metro_core::sequencer::stage_mode::StageMode;
+use stm32g0::stm32g071::TIM17;
 
 const N: usize = 8;
 const BPM: u32 = 128;
 const STEP_PM: u32 = BPM * 4;
-const STEP_DUR: MicroSecond = MicroSecond(((60_f32 / STEP_PM as f32) * 1000_f32) as u32);
-const GATE_DUR: u32 = STEP_DUR.0 / 2;
+const STEP_DUR: u16 = ((60_f32 / STEP_PM as f32) * 1_000_f32) as u16;
+const GATE_DUR: u16 = STEP_DUR / 2;
 
 #[entry]
-fn main() -> ! {
+unsafe fn main() -> ! {
+    hprintln!("N: {}", N).unwrap();
+    hprintln!("BPM: {}", BPM).unwrap();
+    hprintln!("STEP_PM: {}", STEP_PM).unwrap();
+    hprintln!("STEP_DUR: {}ms", STEP_DUR).unwrap();
+    hprintln!("GATE_DUR: {}ms", GATE_DUR).unwrap();
+
     let cp = cortex_m::Peripherals::take().expect("cannot take core peripherals");
     let dp = stm32::Peripherals::take().expect("cannot take peripherals");
-    let mut rcc = dp.RCC.constrain();
+    let mut rcc = dp.RCC.constrain().freeze(Config::pll());
     let mut adc = dp.ADC.constrain(&mut rcc);
     adc.set_sample_time(SampleTime::T_80);
     adc.set_precision(Precision::B_12);
@@ -62,19 +76,21 @@ fn main() -> ! {
     let mux_out_2 = gpiob.pb2.into_push_pull_output();
     let mux_out_en = gpiob.pb3.into_push_pull_output();
     let mut mux_out = Multiplexer::new((mux_out_0, mux_out_1, mux_out_2, mux_out_en));
-    let mut gate_led = gpiob.pb4.into_push_pull_output();
+    let mut gate_led = gpiob.pb4.into_push_pull_output().set_speed(Speed::VeryHigh);
 
     // Outputs
     let mut gate = gpiob.pb5.into_push_pull_output();
     let dac0 = dp.DAC.constrain(gpioa.pa4, &mut rcc);
     let mut pitch = dac0.calibrate_buffer(&mut delay).enable();
 
-    let stopwatch = dp.TIM3.stopwatch(&mut rcc);
-
     let mut seq = sequencer::Sequencer::new();
-    seq.config().set_gate_time_ms(GATE_DUR);
+    seq.config().set_stage_mode(StageMode::PingPong);
+    seq.config().set_gate_time_us((GATE_DUR as u32 * 1000) as u32);
     let scale = Scale::MinorBlues;
-    let mut last_step = stopwatch.now();
+
+    let mut timer = dp.TIM17.timer(&mut rcc);
+    timer.start(1000.ms());
+    (*TIM17::ptr()).psc.modify(|_, w| w.psc().bits(64000-1) );
 
     let mut pitches = [0_f32; N];
     let mut pulse_counts = [0_f32; N];
@@ -97,28 +113,38 @@ fn main() -> ! {
             let stage = seq.config().stage(s).unwrap();
             stage.note = scale.quantize_float(pitches[s]);
             stage.gate_mode = GateMode::from_float(gate_modes[s]);
+            stage.gate_mode = GateMode::Repeat;
             stage.pulse_count = F32Ext::round(pulse_counts[s] * N as f32) as u8;
+            stage.pulse_count = 1u8;
         }
 
         //Trigger Step
-        if stopwatch.elapsed(last_step) > STEP_DUR {
+        if tim17_cnt() >= STEP_DUR {
             seq.step();
-            last_step = stopwatch.now();
+            tim17_rst()
         }
 
         //Get state of sequencer
-        let state = seq.state(stopwatch.elapsed(last_step).0);
+        let state = seq.state(tim17_cnt() as u32 * 1000_u32); // TODO: Refactor to ms
         pitch.set_value((state.note.voltage() * (4_095_f32 / 3.3)) as u16);
+        mux_out.set_channel(state.pos.stage);
         match state.gate {
             Gate::Open => {
-                gate.set_high().unwrap();
-                gate_led.set_high().unwrap();
-            },
+                    gate.set_high().unwrap();
+                    gate_led.set_high().unwrap();
+            }
             Gate::Closed => {
-                gate.set_low().unwrap();
-                gate_led.set_low().unwrap();
-            },
+                    gate.set_low().unwrap();
+                    gate_led.set_low().unwrap();
+            }
         }
-        mux_out.set_channel(state.pos.stage);
     }
+}
+
+unsafe fn tim17_rst() {
+    (*TIM17::ptr()).cnt.modify(|_, w| w.cnt().bits((*TIM17::ptr()).cnt.read().cnt().bits() - STEP_DUR))
+}
+
+unsafe fn tim17_cnt() -> u16 {
+    (*TIM17::ptr()).cnt.read().cnt().bits()
 }
