@@ -1,3 +1,5 @@
+use oorandom;
+
 use crate::musical::gate::Gate;
 use crate::musical::note::Note;
 use crate::sequencer::stage_mode::StageMode;
@@ -37,7 +39,7 @@ impl Sequencer {
     }
 
     fn next_stage_pos(&self, pos: Position) -> Position {
-        self.config.stage_mode.next_stage(self.config.has_pulses_mask(), pos)
+        self.config.stage_mode.next_stage(self.config.has_pulses_mask(), pos, self.config.rng)
     }
 
     fn stage(&self, pos: Position) -> Option<&Stage> {
@@ -72,12 +74,13 @@ pub struct Config {
     stages: [Stage; N],
     stage_mode: StageMode,
     gate_time_us: u32,
+    rng: oorandom::Rand32,
 }
 
 impl Config
 {
     pub fn new() -> Self {
-        Self { stages: [Stage::default(); N], stage_mode: StageMode::Forward, gate_time_us: 50 }
+        Self { stages: [Stage::default(); N], stage_mode: StageMode::Forward, gate_time_us: 50, rng: oorandom::Rand32::new(0) }
     }
 
     pub fn stage(&mut self, index: usize) -> Option<&mut Stage> {
@@ -105,6 +108,8 @@ impl Config
     pub fn set_stage_mode(&mut self, stage_mode: StageMode) {
         self.stage_mode = stage_mode
     }
+
+    pub fn set_rnd_seed(&mut self, rnd_seed: u32) { self.rng = oorandom::Rand32::new(rnd_seed as u64) }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -205,8 +210,8 @@ impl Stage {
 
 #[cfg(test)]
 mod tests {
-    use crate::sequencer::sequencer::GateMode::Repeat;
     use crate::musical::gate::Gate;
+    use crate::sequencer::sequencer::GateMode::Repeat;
 
     #[test]
     fn test_gate_mode() {

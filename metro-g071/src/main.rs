@@ -7,9 +7,6 @@ extern crate cortex_m;
 extern crate cortex_m_rt as rt;
 extern crate heapless;
 extern crate metro_core;
-// extern crate nb;
-// extern crate panic_halt;
-use panic_semihosting as _;
 extern crate stm32g0xx_hal as hal;
 
 use analog_multiplexer::Multiplexer;
@@ -24,17 +21,20 @@ use hal::hal::timer::CountDown;
 use hal::prelude::OutputPin;
 use hal::rcc::{Config, RccExt};
 use hal::stm32;
-use hal::time::{U32Ext};
+use hal::time::U32Ext;
 use hal::timer::TimerExt;
 use micromath::F32Ext;
+// extern crate nb;
+// extern crate panic_halt;
+use panic_semihosting as _;
 use rt::entry;
+use stm32g0::stm32g071::TIM17;
 
 use metro_core::musical::gate::Gate;
 use metro_core::musical::scale::Scale;
 use metro_core::sequencer::sequencer;
 use metro_core::sequencer::sequencer::GateMode;
 use metro_core::sequencer::stage_mode::StageMode;
-use stm32g0::stm32g071::TIM17;
 
 const N: usize = 8;
 const BPM: u32 = 128;
@@ -86,11 +86,11 @@ unsafe fn main() -> ! {
     let mut seq = sequencer::Sequencer::new();
     seq.config().set_stage_mode(StageMode::PingPong);
     seq.config().set_gate_time_us((GATE_DUR as u32 * 1000) as u32);
-    let scale = Scale::MinorBlues;
+    let scale = Scale::Chromatic;
 
     let mut timer = dp.TIM17.timer(&mut rcc);
     timer.start(1000.ms());
-    (*TIM17::ptr()).psc.modify(|_, w| w.psc().bits(64000-1) );
+    (*TIM17::ptr()).psc.modify(|_, w| w.psc().bits(64000 - 1));
 
     let mut pitches = [0_f32; N];
     let mut pulse_counts = [0_f32; N];
@@ -118,10 +118,12 @@ unsafe fn main() -> ! {
             stage.pulse_count = 1u8;
         }
 
+        seq.config().set_rnd_seed(tim17_cnt() as u32); // TODO: Find a better seed
+
         //Trigger Step
         if tim17_cnt() >= STEP_DUR {
             seq.step();
-            tim17_rst()
+            tim17_rst();
         }
 
         //Get state of sequencer
@@ -130,19 +132,20 @@ unsafe fn main() -> ! {
         mux_out.set_channel(state.pos.stage);
         match state.gate {
             Gate::Open => {
-                    gate.set_high().unwrap();
-                    gate_led.set_high().unwrap();
+                gate.set_high().unwrap();
+                gate_led.set_high().unwrap();
             }
             Gate::Closed => {
-                    gate.set_low().unwrap();
-                    gate_led.set_low().unwrap();
+                gate.set_low().unwrap();
+                gate_led.set_low().unwrap();
             }
         }
     }
 }
 
 unsafe fn tim17_rst() {
-    (*TIM17::ptr()).cnt.modify(|_, w| w.cnt().bits((*TIM17::ptr()).cnt.read().cnt().bits() - STEP_DUR))
+    (*TIM17::ptr()).cnt.modify(|r, w|
+        w.cnt().bits(r.cnt().bits().saturating_sub(STEP_DUR)))
 }
 
 unsafe fn tim17_cnt() -> u16 {

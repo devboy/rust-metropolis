@@ -5,6 +5,7 @@ name = "metro-core"
 version = "0.1.0"
 dependencies = [
  "micromath",
+ "oorandom",
 ]
 
 [[package]]
@@ -12,3 +13,9 @@ name = "micromath"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be00a244d4394124986da477e8b2814dcb7995ab238817d9037bc336c4b0b843"
+
+[[package]]
+name = "oorandom"
+version = "11.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a170cebd8021a008ea92e4db85a72f80b35df514ec664b296fdcbb654eac0b2c"

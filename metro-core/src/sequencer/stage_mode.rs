@@ -1,5 +1,3 @@
-use micromath::F32Ext;
-
 use Direction::{Forward, Reverse};
 
 use crate::sequencer::sequencer::{Direction, MaskU8, Position};
@@ -14,18 +12,18 @@ pub enum StageMode {
 }
 
 impl StageMode {
-    pub fn next_stage(self, stage_mask: MaskU8, pos: Position) -> Position {
+    pub fn next_stage(self, stage_mask: MaskU8, pos: Position, rng: oorandom::Rand32) -> Position {
         match self {
             Self::Forward => Self::forward(stage_mask, pos),
             Self::Reverse => Self::reverse(stage_mask, pos),
             Self::PingPong => Self::ping_pong(stage_mask, pos),
-            Self::Brownian => Self::brownian(stage_mask, pos),
-            Self::Random => Self::random(stage_mask, pos),
+            Self::Brownian => Self::brownian(stage_mask, pos, rng),
+            Self::Random => Self::random(stage_mask, pos, rng),
         }
     }
 
-    fn random(stage_mask: MaskU8, pos: Position) -> Position {
-        let idx = F32Ext::round(Self::rnd() * 7 as f32) as u8;
+    fn random(stage_mask: MaskU8, pos: Position, mut rng: oorandom::Rand32) -> Position {
+        let idx = rng.rand_range(0..8) as u8;
         let lower = stage_mask.next_lower(idx);
         let higher = stage_mask.next_higher(idx);
         match (lower, higher) {
@@ -37,14 +35,14 @@ impl StageMode {
                 } else {
                     Position { stage: h, pulse: 0, dir: pos.dir }
                 }
-            },
+            }
             (None, None) =>
                 Position { stage: pos.stage, pulse: 0, dir: pos.dir },
         }
     }
 
-    fn brownian(stage_mask: MaskU8, pos: Position) -> Position {
-        match (Self::rnd(), Self::rnd()) {
+    fn brownian(stage_mask: MaskU8, pos: Position, mut rng: oorandom::Rand32) -> Position {
+        match (rng.rand_float(), rng.rand_float()) {
             (a, _) if a > 0.5 => Self::forward(stage_mask, pos),
             (_, b) if b > 0.5 => Position { stage: pos.stage, pulse: 0, dir: pos.dir },
             _ => Self::reverse(stage_mask, pos),
@@ -85,11 +83,6 @@ impl StageMode {
             Some(p) => Position { stage: p, pulse: 0, dir: Forward },
             None => Position { stage: lowest, pulse: 0, dir: Forward },
         }
-    }
-
-    // TODO: Inject a RNG
-    fn rnd() -> f32 {
-        1.0
     }
 }
 
