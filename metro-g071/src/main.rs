@@ -22,7 +22,7 @@ use hal::prelude::OutputPin;
 use hal::rcc::{Config, RccExt};
 use hal::stm32;
 use hal::time::U32Ext;
-use hal::timer::TimerExt;
+use hal::timer::{TimerExt};
 use micromath::F32Ext;
 // extern crate nb;
 // extern crate panic_halt;
@@ -90,7 +90,7 @@ unsafe fn main() -> ! {
 
     let mut timer = dp.TIM17.timer(&mut rcc);
     timer.start(1000.ms());
-    (*TIM17::ptr()).psc.modify(|_, w| w.psc().bits(64000 - 1));
+    TIM17::prescaler(64000 - 1);
 
     let mut pitches = [0_f32; N];
     let mut pulse_counts = [0_f32; N];
@@ -118,16 +118,16 @@ unsafe fn main() -> ! {
             stage.pulse_count = 1u8;
         }
 
-        seq.config().set_rnd_seed(tim17_cnt() as u32); // TODO: Find a better seed
+        seq.config().set_rnd_seed(TIM17::count() as u32); // TODO: Find a better seed
 
         //Trigger Step
-        if tim17_cnt() >= STEP_DUR {
+        if TIM17::count() >= STEP_DUR {
             seq.step();
-            tim17_rst();
+            TIM17::sub(STEP_DUR);
         }
 
         //Get state of sequencer
-        let state = seq.state(tim17_cnt() as u32 * 1000_u32); // TODO: Refactor to ms
+        let state = seq.state(TIM17::count() as u32 * 1000_u32); // TODO: Refactor to ms
         pitch.set_value((state.note.voltage() * (4_095_f32 / 3.3)) as u16);
         mux_out.set_channel(state.pos.stage);
         match state.gate {
@@ -143,11 +143,40 @@ unsafe fn main() -> ! {
     }
 }
 
-unsafe fn tim17_rst() {
-    (*TIM17::ptr()).cnt.modify(|r, w|
-        w.cnt().bits(r.cnt().bits().saturating_sub(STEP_DUR)))
+trait TimerCountExt<TIM> {
+    fn prescaler(psc: u16);
+    fn reset();
+    fn set(cnt:u16);
+    fn sub(sub:u16);
+    fn count() -> u16;
 }
 
-unsafe fn tim17_cnt() -> u16 {
-    (*TIM17::ptr()).cnt.read().cnt().bits()
+impl TimerCountExt<TIM17> for TIM17 {
+    fn prescaler(psc: u16) {
+        unsafe {
+            (*Self::ptr()).psc.modify(|_, w| w.psc().bits(psc));
+        }
+    }
+
+    fn reset() {
+        Self::set(0);
+    }
+
+    fn set(cnt:u16) {
+        unsafe {
+            (*Self::ptr()).cnt.modify(|_, w| w.cnt().bits(cnt))
+        }
+    }
+
+    fn sub(cnt:u16) {
+        unsafe {
+            (*Self::ptr()).cnt.modify(|r, w| w.cnt().bits(r.cnt().bits().saturating_sub(cnt)))
+        }
+    }
+
+    fn count() -> u16 {
+        unsafe {
+            (*Self::ptr()).cnt.read().cnt().bits()
+        }
+    }
 }
